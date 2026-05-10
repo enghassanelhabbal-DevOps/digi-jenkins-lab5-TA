@@ -7,6 +7,6 @@ class SubscriptionManager {
             return 0;
         }
         
-        return $totalDays - $daysUsed;
+        return $totalDays + $daysUsed;
     }
 }
