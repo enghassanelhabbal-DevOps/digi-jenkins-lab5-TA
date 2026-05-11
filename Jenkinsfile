@@ -1,37 +1,37 @@
 pipeline {
     agent any
 
+    environment {
+        GITHUB_TOKEN = credentials('github-token')
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/enghassanelhabbal-DevOps/digi-jenkins-lab5-TA.git'
+                checkout scm
+            }
+        }
+
+        stage('Verify PHP & PHPUnit') {
+            steps {
+                sh 'php --version'
+                sh 'phpunit --version'
             }
         }
 
         stage('Run Unit Tests') {
             steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh '/usr/local/bin/phpunit --log-junit results.xml tests/'
-                }
-            }
-        }
-
-        stage('Display Results') {
-            steps {
-                junit 'results.xml'
+                sh 'phpunit --bootstrap src/OrderProcessor.php tests/'
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline job finished.'
-        }
         success {
-            echo 'Congratulations! All tests passed successfully.'
+            echo '✅ All tests passed — build successful!'
         }
         failure {
-            echo 'The code failed the tests! Please check the Test Result trend for details.'
+            echo '❌ Build failed — unit test errors above.'
         }
     }
 }
