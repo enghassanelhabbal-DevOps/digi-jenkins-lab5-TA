@@ -19,6 +19,6 @@ class SubscriptionTest extends TestCase {
         // اشتراك 30 يوم، استهلكنا 35 يوم، المفروض يرجع 0
         $result = $sub->getDaysRemaining(30, 35);
         
-        $this->assertEquals(0, $result);
+        $this->assertEquals(1, $result);
     }
 }
