@@ -1,118 +1,157 @@
-# Jenkins_Lab_2
+# Lab 2: Containerization & Code Quality
+> Docker · SonarQube · Private Repo · New Secrets
+
 ---
-## Lab 2: Containerization & Code Quality – Docker, SonarQube, Private Repo & New Secrets
+
+## Task 1 — Secure Access to Private Repository (PAT)
+
+Move your app code to a private GitHub repo and configure Jenkins to authenticate via Personal Access Token (PAT).
+
 ---
 
-## Task 1 : Secure Access to Private Repository (using PAT)
-Building on Lab 1, you will now move your application code to a Private GitHub Repository.
-To enable Jenkins to pull this private code, you will use your Personal Access Token (PAT) as the authentication method.
-Action: Convert the repository to Private and configure Jenkins to authenticate via PAT for secure code retrieval.
-Steps:
+### Step 1 — Make the repository private
 
-1. Repository Visibility Update
-Go to your GitHub repository Settings.
+1. Go to your GitHub repo **Settings**
+2. Scroll down to **Danger Zone**
+3. Click **Change visibility** → set to **Private**
 
-Scroll down to the Danger Zone.
+> [!WARNING]
+> Jenkins will fail to pull code until steps 2 and 3 are completed.
 
-Click Change visibility and set the repository to Private.
+---
 
-Note: After this change, Jenkins will fail to pull the code until the next steps are completed.
+### Step 2 — Add credentials in Jenkins
 
-2. Configure Jenkins Credentials
-In the Jenkins Dashboard, go to Manage Jenkins > Credentials.
+Navigate to **Manage Jenkins → Credentials → (global) → Add Credentials** and fill in:
 
-Click on the (global) domain and select Add Credentials.
+| Field | Value |
+|---|---|
+| Kind | `Username with password` |
+| Username | Your GitHub username |
+| Password | Your PAT from Lab 1 |
+| ID | `github-pat-creds` |
 
-Kind: Select Username with password.
+Click **Create**.
 
-Username: Enter your GitHub username.
+---
 
-Password: Paste the Personal Access Token (PAT) you generated in Lab 1.
+### Step 3 — Update your Jenkinsfile
 
-ID: Enter github-pat-creds (This ID will be used in your Jenkinsfile).
+Add the credentials ID to the checkout stage:
 
-Click Create.
-
-3. Update the Pipeline Script (Jenkinsfile)
-Modify your Jenkinsfile to use the new credentials ID.
-ex: 
+```groovy
 stage('Checkout') {
-            steps {
-                checkout scmGit(
-                    branches: [[name: 'main']],
-                    userRemoteConfigs: [[
-                        url: '<link of your repo>',
-                        credentialsId: 'github-pat-creds'
-                    ]]
-                )
-            }
+    steps {
+        checkout scmGit(
+            branches: [[name: 'main']],
+            userRemoteConfigs: [[
+                url: '<link of your repo>',
+                credentialsId: 'github-pat-creds'
+            ]]
+        )
+    }
 }
-
+```
 
 ---
 
+## Task 2 — Static Code Analysis with SonarQube
 
-## Task 2: Static Code Analysis Setup (SonarQube)
-Before shipping the code, we must analyze its quality and find potential bugs or security vulnerabilities.
+Analyse code quality and find bugs or security vulnerabilities before shipping.
 
-Step 1: Start the SonarQube Server
-- you can start one instantly using Docker
-- $ docker run -d --name sonarqube -p 9000:9000 sonarqube:lts-community
-- Access the dashboard at: http://<YOUR_SERVER_IP>:9000
-- Default Credentials: Username: admin / Password: admin (You will be prompted to change the password immediately).
+---
 
-Step 2: Create a Project and Generate a Token
- - Jenkins needs a "key" (token) to upload the analysis results to SonarQube.
- - In the SonarQube dashboard, click Create Project -> Select Manually.
- - Project Key: Enter service-app
- - Click Set Up.
- - Under "How do you want to analyze your repository?", select With Jenkins.
- - Go to Jenkins Dashboard and install SonarQube Scanner plugin 
- - Follow the prompts to Generate a token:
-     - Name the token: jenkins-sonar-token
-     - Click Generate
-     - Copy the token immediately. You will not be able to see it again!
+### Phase 1 — SonarQube Server
 
-Step 3: Store the Token in Jenkins Credentials
- - you must give this "key" to Jenkins so it can talk to SonarQube during the pipeline execution
- - Go to your Jenkins Dashboard > Manage Jenkins > Credentials
- - Click on the (global) domain and select Add Credentials.
- - Kind: Select Secret text.
- - Secret: Paste the token you copied from SonarQube.
- - ID: Enter sonar-token (This ID will be used in your Jenkinsfile).
- - Click Create.
+#### Step 1 — Start SonarQube via Docker
 
-**Phase 2: Jenkins Global Configuration**
-You need to tell Jenkins where the SonarQube server is and which scanner tool to use.
-Step 1: Install SonarQube Scanner Tool
-Go to Manage Jenkins > Tools.
+```bash
+docker run -d --name sonarqube -p 9000:9000 sonarqube:lts-community
+```
 
-Scroll to SonarQube Scanner.
+Then open the dashboard at `http://<YOUR_SERVER_IP>:9000`
 
-Click Add SonarQube Scanner.
+> [!NOTE]
+> Default credentials: **admin / admin** — you will be prompted to change the password on first login.
 
-Name: SonarScanner (This exact name must be used in your Jenkinsfile).
+---
 
-Check Install automatically.
+#### Step 2 — Create a project and generate a token
 
-Step 2: Configure SonarQube Server Settings
-Go to Manage Jenkins > System.
+1. In the SonarQube dashboard: **Create Project → Manually**
+2. Set project key to `service-app` → click **Set Up**
+3. Under "How do you want to analyze?", select **With Jenkins**
+4. Go to Jenkins and install the **SonarQube Scanner** plugin
+5. Back in SonarQube, generate a token:
 
-Scroll to SonarQube servers.
+| Field | Value |
+|---|---|
+| Token name | `jenkins-sonar-token` |
 
-Click Add SonarQube.
+> [!IMPORTANT]
+> Copy the token immediately — it will not be shown again.
 
-Name: SonarQube-Server (This exact name must be used in your Jenkinsfile).
+---
 
-Server URL: Use your VM IP (e.g., http://192.168.1.10:9000).
+#### Step 3 — Store the token in Jenkins
 
-Note: Do not use localhost if Jenkins is in a Docker container.
+Navigate to **Manage Jenkins → Credentials → (global) → Add Credentials**:
 
-Server authentication token: Add the token you copied earlier as a Secret Text credential in Jenkins with the ID sonar-token.
+| Field | Value |
+|---|---|
+| Kind | `Secret text` |
+| Secret | Paste your SonarQube token |
+| ID | `sonar-token` |
 
-## Phase 3: Jenkinsfile Configuration
-Add the analysis stage to your pipeline Jenkinsfile.
+Click **Create**.
 
-## Verify SonarQube
-After sonarqube success, edit the code in src/OrderProcessor.php *Remove the comment hash*
-then try to push again => should sonarqube failed
+---
+
+### Phase 2 — Jenkins Global Configuration
+
+#### Step 4 — Install SonarQube Scanner tool
+
+Go to **Manage Jenkins → Tools → SonarQube Scanner → Add SonarQube Scanner**:
+
+| Field | Value |
+|---|---|
+| Name | `SonarScanner` |
+| Install automatically | ✅ checked |
+
+> [!NOTE]
+> The name `SonarScanner` must match exactly what is referenced in your Jenkinsfile.
+
+---
+
+#### Step 5 — Configure SonarQube server settings
+
+Go to **Manage Jenkins → System → SonarQube servers → Add SonarQube**:
+
+| Field | Value |
+|---|---|
+| Name | `SonarQube-Server` |
+| Server URL | `http://<YOUR_VM_IP>:9000` |
+| Server authentication token | `sonar-token` |
+
+> [!WARNING]
+> Do not use `localhost` as the server URL if Jenkins is running inside a Docker container.
+
+---
+
+### Phase 3 — Jenkinsfile Configuration
+
+#### Step 6 — Add the analysis stage to your pipeline
+
+Add the SonarQube stage to your existing Jenkinsfile using:
+- Tool name: `SonarScanner`
+- Server name: `SonarQube-Server`
+
+---
+
+### ✅ Verify SonarQube
+
+After a successful SonarQube run:
+
+1. Edit `src/OrderProcessor.php` — remove the comment hash (`#`)
+2. Push the change
+3. SonarQube should now **fail**, confirming quality gates are active
